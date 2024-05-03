@@ -1,5 +1,5 @@
 const {Sequelize, DataTypes} = require("sequelize");
-//const db = require("./banco")
+const db = require("./banco")
 
 const sequelize = new Sequelize("krusty_burger", "root", "", {
     host:"localhost",

@@ -1,13 +1,47 @@
 const express = require('express');
 const router = express.Router();
 const produto = require('./models/produto');
-const User = require('./models/models').User;
+const {User} = require('./models/models');
 const bcrypt = require('bcryptjs');
 const passport = require('./config/auth')
+const LocalStrategy = require('passport-local').Strategy
 //require do body-parser para pegar os dados do form
 
 
+passport.use(new LocalStrategy({usernameField: 'email'}, async (email,password,done)=>{
+  try{
+    const user = await User.findOne({email})
+    if(!user){
+      return done(null,false,{message: "Usuario nao encontrado"})
+    }
+    const isValidPassword = await bcrypt.compare(password, user.password)
+
+    if(!isValidPassword){
+      return done(null,false,{message: "Senha incorreta"})
+    }
+
+    return done(null,user)
+  }catch(error){
+    return done(error)
+  }
+}))
+
+passport.serializeUser((user,done)=>{
+  done(null,user.id)
+})
+
+passport.deserializeUser(async (id,done)=>{
+  try{
+    const user = await User.findByPk(id)
+    done(null,user)
+  }catch(error){
+    done(error)
+  }
+})
+
 //config do bodyparser para leitura do post
+
+
 
 
 // Rota inicial
@@ -136,21 +170,48 @@ router.get("/consultar", (req, res)=>{
   })) 
   
   
-  router.get("/profile", verificaAutenticacao, (req,res) =>{
+// Rota para renderizar a página de perfil
+router.get("/profile", (req, res) => {
+  if (req.isAuthenticated()) {
+      const user = req.user;
+      res.render("user_info", { user });
+  } else {
+      // Se o usuário não estiver autenticado, redirecione-o para a página de login
+      res.redirect("/login");
+  }
+});
+
+router.get('/profile', (req, res) => {
+  if (req.isAuthenticated()) {
+      res.json(req.user);
+  } else {
+      res.json({});
+  }
+});
+
+
+fetch('/profile')
+.then(response => response.json())
+.then(user =>{
+  const nameInfo = document.getElementById('nome')
+  nameInfo.innerHTML = `${user.username}`
+})
+.catch(error => console.log("deu rui",error))
+
   
-      res.render('user_info', {user: req.user})
-  
-      // post.findAll({where: {"id" : req.params.id}}).then((posts)=>{
-      // res.render('user_info', {post:posts})
-  // try {
-  //   const usuario = req.session.user;
-  //   res.render('user_info', { post });
-  // } catch (error) {
-  //   console.log("Erro ao renderizar o perfil:", error);
-  //   res.status(500).send("Erro ao renderizar o perfil");
-  // }
+  //     // post.findAll({where: {"id" : req.params.id}}).then((posts)=>{
+  //     // res.render('user_info', {post:posts})
+  // // try {
+  // //   const usuario = req.session.user;
+  // //   res.render('user_info', { post });
+  // // } catch (error) {
+  // //   console.log("Erro ao renderizar o perfil:", error);
+  // //   res.status(500).send("Erro ao renderizar o perfil");
+  // // }
      
-  });
+  // });
+
+
   
   // Rota de logout
   router.get('/logout', (req, res) => {
